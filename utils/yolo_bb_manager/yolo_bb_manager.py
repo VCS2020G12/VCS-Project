@@ -7,6 +7,8 @@ files = sorted(files)
 
 dim = len(files)
 
+n_files = 0
+
 for i, file_name in enumerate(files):
     img = cv2.imread("../images/" + file_name)
     img_height, img_width, channels = img.shape
@@ -29,3 +31,6 @@ for i, file_name in enumerate(files):
 
         cv2.imshow("img", img)
         cv2.waitKey(0)
+    n_files += 1
+
+print("Processed files:", n_files)
