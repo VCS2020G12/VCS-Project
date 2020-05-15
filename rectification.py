@@ -159,6 +159,43 @@ def get_ROI_points(file_name):
     return [pt1, pt2, pt3, pt4]
 
 
+'''
+Order corners: bottom-right, bottom-left, top-right, top-left
+'''
+def orderCorners(src_corners):
+    xy_sums = []
+    x_values = []
+
+    pts = []
+
+    for point in src_corners:
+        xy_sums.append(point[0] + point[1])
+        x_values.append(point[0])
+
+    # pt0
+    pts.append(src_corners[xy_sums.index(max(xy_sums))])
+    del x_values[xy_sums.index(max(xy_sums))]
+    del src_corners[xy_sums.index(max(xy_sums))]
+    del xy_sums[xy_sums.index(max(xy_sums))]
+
+    # pt3
+    pt3 = src_corners[xy_sums.index(min(xy_sums))]
+    del x_values[xy_sums.index(min(xy_sums))]
+    del src_corners[xy_sums.index(min(xy_sums))]
+    del xy_sums[xy_sums.index(min(xy_sums))]
+
+    # pt1
+    pts.append(src_corners[x_values.index(min(x_values))])
+
+    # pt2
+    pts.append(src_corners[x_values.index(max(x_values))])
+
+    # Append also pt3
+    pts.append(pt3)
+
+    return pts
+
+
 if __name__ == '__main__':
     files = [f for f in listdir("data/images/") if isfile(join("data/images/", f))]
     files = sorted(files)
@@ -171,6 +208,9 @@ if __name__ == '__main__':
 
         blank_pol = drawPolygon(roi_img)  # blank image with the rectangle
         corners_src = findCorners(blank_pol)
+
+        corners_src = orderCorners(corners_src)
+
         print(corners_src)
         # print(cornerHarris(blank_pol, 200))
 
