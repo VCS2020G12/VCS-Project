@@ -11,11 +11,11 @@ source_window = 'Source image'
 corners_window = 'Corners detected'
 max_thresh = 255
 
-
 # ------------ CORNER DETECTION: 2 WAYS ------------
 '''
 Results are pretty similar, the first uses the goodFeaturesToTrack method, the second the Harris method
 '''
+
 def findCorners(src):
     out_corners = []
     gray = cv2.cvtColor(src, cv2.COLOR_BGR2GRAY)
@@ -30,7 +30,7 @@ def findCorners(src):
     for corner in corners:
         x, y = corner.ravel()
         out_corners.append([x, y])
-        cv2.circle(src, (x,y), 3, 255, - 1)
+        cv2.circle(src, (x, y), 3, 255, - 1)
 
     cv2.imshow('Corner', src)
     cv2.waitKey(0)
@@ -52,11 +52,11 @@ def cornerHarris(src, thresh):
     # Drawing a circle around corners
     for i in range(dst_norm.shape[0]):
         for j in range(dst_norm.shape[1]):
-            if int(dst_norm[i,j]) > thresh:
+            if int(dst_norm[i, j]) > thresh:
                 corners.append([j, i])
                 count_corners += 1
                 print("Count:", count_corners, "Center coords: (", j, ",", i, ")")
-                cv2.circle(src, (j,i), 5, 0, 2)
+                cv2.circle(src, (j, i), 5, 0, 2)
 
     cv2.imshow("Corners", src)
     cv2.waitKey(0)
@@ -68,11 +68,15 @@ def cornerHarris(src, thresh):
 This code takes an input image (RGB, already cut in ROI shape), detects inside one polygon 
 with 4 edges and draws the result on a blank image which is then returned
 '''
+
+
 def drawPolygon(src_img):
     gray_img = cv2.cvtColor(src_img, cv2.COLOR_BGR2GRAY)
     blank = 255 * np.ones_like(src_img)
     cv2.imshow('White Image', blank)
     cv2.waitKey(0)
+
+    found = False  # flag to try different parameters
 
     # Median blur makes it worse in this case
     # Canny makes it worse in this case
@@ -96,7 +100,32 @@ def drawPolygon(src_img):
             if (len(approx) == 4):  # select only if the polygon has 4 edges
                 cv2.drawContours(blank, [approx], 0, (0, 0, 255), 2)  # draw the contour on the blank image
                 cv2.imshow('Contoured Blank Image', blank)
+                found = True
                 break  # break to the first found
+
+    if not found:
+        _, threshold = cv2.threshold(gray_img, 120, 255, cv2.THRESH_BINARY_INV)
+        cv2.imshow('Threshold Image', threshold)
+        cv2.waitKey(0)
+
+        # Find contours on the thresholded image
+        contours, _ = cv2.findContours(threshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+        for cnt in contours:
+            area = cv2.contourArea(cnt)
+
+            # Shortlist based on area --> doesn't detect areas too small
+            if area > 100:
+                # Find Polygons shapes
+                approx = cv2.approxPolyDP(cnt, 0.009 * cv2.arcLength(cnt, True), True)
+                if (len(approx) == 4):  # select only if the polygon has 4 edges
+                    cv2.drawContours(blank, [approx], 0, (0, 0, 255), 2)  # draw the contour on the blank image
+                    cv2.imshow('Contoured Blank Image', blank)
+                    found = True
+                    break  # break to the first found
+
+    if not found:
+        exit("No polygon found")
 
     # Exiting the windows if 'q' is pressed on the keyboard
     if cv2.waitKey(0) & 0xFF == ord('q'):
@@ -109,6 +138,8 @@ def drawPolygon(src_img):
 '''
 Cut the original image to the shape of the ROI
 '''
+
+
 def cut2ROI(file_name):
     img = cv2.imread("data/images/" + file_name)
     img_h, img_w, c = img.shape
@@ -131,10 +162,13 @@ def cut2ROI(file_name):
 
     return roi
 
+
 # ------------ GET ROI boundary points ------------
 '''
 Get the 4 boundary points of the ROI inside the image
 '''
+
+
 def get_ROI_points(file_name):
     img = cv2.imread("data/images/" + file_name)
     img_h, img_w, c = img.shape
@@ -158,21 +192,22 @@ def get_ROI_points(file_name):
 
     return [pt1, pt2, pt3, pt4]
 
+
 def order_points(pts):
     # initialzie a list of coordinates that will be ordered
     # such that the first entry in the list is the top-left,
     # the second entry is the top-right, the third is the
     # bottom-right, and the fourth is the bottom-left
-    rect = np.zeros((4, 2), dtype = "float32")
+    rect = np.zeros((4, 2), dtype="float32")
     # the top-left point will have the smallest sum, whereas
     # the bottom-right point will have the largest sum
-    s = pts.sum(axis = 1)
+    s = pts.sum(axis=1)
     rect[0] = pts[np.argmin(s)]
     rect[2] = pts[np.argmax(s)]
     # now, compute the difference between the points, the
     # top-right point will have the smallest difference,
     # whereas the bottom-left will have the largest difference
-    diff = np.diff(pts, axis = 1)
+    diff = np.diff(pts, axis=1)
     rect[1] = pts[np.argmin(diff)]
     rect[3] = pts[np.argmax(diff)]
     # return the ordered coordinates
@@ -205,7 +240,7 @@ def four_point_transform(image, pts):
         [0, 0],
         [maxWidth - 1, 0],
         [maxWidth - 1, maxHeight - 1],
-        [0, maxHeight - 1]], dtype = "float32")
+        [0, maxHeight - 1]], dtype="float32")
     # compute the perspective transform matrix and then apply it
     M = cv2.getPerspectiveTransform(rect, dst)
     warped = cv2.warpPerspective(image, M, (maxWidth, maxHeight))
@@ -218,13 +253,12 @@ if __name__ == '__main__':
     files = sorted(files)
 
     for i, file_name in enumerate(files):
-
         roi_img = cut2ROI(file_name)
         cv2.imshow('ROI Image', roi_img)
         cv2.waitKey(0)
 
         blank_pol = drawPolygon(roi_img)  # blank image with the rectangle
-        corners_src = findCorners(blank_pol) 
+        corners_src = findCorners(blank_pol)
 
         print(corners_src)
 
@@ -233,15 +267,12 @@ if __name__ == '__main__':
         # Get window dims --> they'll be our dest points
         '''
         x, y, w, h = cv2.getWindowImageRect('ROI Image')
-
         corners_dst = [[w,h], [0,h], [w,0], [0,0]]
         print(corners_dst)
-
         pts1 = np.float32(corners_src)
         pts2 = np.float32(corners_dst)
         matrix = cv2.getPerspectiveTransform(pts1, pts2)
         result = cv2.warpPerspective(roi_img, matrix, (w, h))
-        
         '''
 
         corners_src = np.asarray(corners_src, dtype=np.int)
@@ -250,5 +281,3 @@ if __name__ == '__main__':
         cv2.imshow('ROI Image', roi_img)
         cv2.imshow('Perspective Transform', result)
         cv2.waitKey(0)
-
-
