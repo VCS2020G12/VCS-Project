@@ -1,12 +1,20 @@
 from tkinter import *
 from PIL import ImageTk, Image
 from tkinter import filedialog
+import video_processing
+
 
 root = Tk()
 root.title('Application')
 # root.iconbitmap('images/icon.ico')
 root.geometry("500x500")
 
+# Center the frame
+windowWidth = root.winfo_reqwidth()
+windowHeight = root.winfo_reqheight()
+positionRight = int(root.winfo_screenwidth() / 2 - windowWidth / 2) - 150
+positionDown = int(root.winfo_screenheight() / 2 - windowHeight / 2) - 150
+root.geometry("+{}+{}".format(positionRight, positionDown))
 
 # ------------------------ CHOOSE DIRECTORY OR FILE ------------------------
 frame1 = LabelFrame(root, text="  Choose between a directory or a file  ")
@@ -40,7 +48,8 @@ frame3.pack(fill="x", padx=8, pady=8)
 
 
 def var_states():
-   Label(root, text="Perform for path %s with config %d-%d-%d-%d-%d" % (e.get(), pnt_detection.get(), pnt_rectification.get(), pnt_retrieval.get(), ppl_detection.get(), ppl_localization.get())).pack()
+    Label(root, text="Perform for path %s with config %d-%d-%d-%d-%d" % (e.get(), pnt_detection.get(), pnt_rectification.get(), pnt_retrieval.get(), ppl_detection.get(), ppl_localization.get())).pack()
+    video_processing.process_video(e.get(), 0)
 
 
 pnt_detection = IntVar()
