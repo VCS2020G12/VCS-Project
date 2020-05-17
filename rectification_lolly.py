@@ -8,7 +8,9 @@ from scipy import signal, ndimage
 from skimage.transform import resize
 import imutils
 from sklearn.cluster import KMeans
-
+import skimage.segmentation as seg
+from skimage import img_as_ubyte
+import skimage.color as color
 
 # ------------ CORNER DETECTION: 2 WAYS ------------
 '''
@@ -70,60 +72,6 @@ This code takes an input image (RGB, already cut in ROI shape), detects inside o
 with 4 edges and draws the result on a blank image which is then returned
 '''
 
-def drawPolygon2(src_img):
-    new_image = np.zeros(src_img.shape, src_img.dtype)
-    blank = 255 * np.ones_like(src_img)
-    alpha = 4.0  # Simple contrast control
-    beta = 8  # Simple brightness control
-    new_image[:, :, :] = np.clip(alpha * src_img[:, :, :] + beta, 0, 255)
-    cv2.imshow('Contrast', new_image)
-    cv2.waitKey(0)
-
-    gray = cv2.cvtColor(new_image, cv2.COLOR_BGR2GRAY)
-    cv2.imshow('Gray Image', gray)
-    cv2.waitKey(0)
-
-    flt = cv2.bilateralFilter(gray, 11, 17, 17)
-    cv2.imshow('Filtered Image', flt)
-    cv2.waitKey(0)
-
-    _, threshold = cv2.threshold(flt, 60, 255, cv2.THRESH_BINARY_INV)
-    cv2.imshow('Threshold Image', threshold)
-    cv2.waitKey(0)
-
-    #edged = cv2.Canny(flt, 60, 200)
-    #cv2.imshow('Canny Image', edged)
-    #cv2.waitKey(0)
-
-    cnts = cv2.findContours(threshold.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-    for cnt in cnts:
-        area = cv2.contourArea(cnt)
-
-        # Shortlist based on area --> doesn't detect too small areas
-        if area > 100:
-            # Find Polygons shapes
-            approx = cv2.approxPolyDP(cnt, 0.009 * cv2.arcLength(cnt, True), True)
-            if (len(approx) == 4):  # select only if the polygon has 4 edges
-                cv2.drawContours(blank, [approx], 0, (0, 0, 255), 2)  # draw the contour on the blank image
-                cv2.imshow('Contoured Blank Image', blank)
-
-    cnts = imutils.grab_contours(cnts)
-    cnts = sorted(cnts, key=cv2.contourArea, reverse=True)
-    screenCnt = None
-    for c in cnts:
-        # approximate the contour
-        peri = cv2.arcLength(c, True)
-        approx = cv2.approxPolyDP(c, 0.015 * peri, True)
-        # if our approximated contour has four points, then
-        # we can assume that we have found our screen
-        if len(approx) == 4:
-            screenCnt = approx
-            cv2.drawContours(src_img, [screenCnt], -1, (0, 255, 0), 3)
-    cv2.imshow("Draw Image", src_img)
-    cv2.waitKey(0)
-
-
 
 def drawPolygon(src_img):
     gray_img = cv2.cvtColor(src_img, cv2.COLOR_BGR2GRAY)
@@ -136,8 +84,8 @@ def drawPolygon(src_img):
 
     # Thresholding --> binary image
     _, threshold = cv2.threshold(gray_img, 60, 255, cv2.THRESH_BINARY_INV)
-    cv2.imshow('Threshold Image', threshold)
-    cv2.waitKey(0)
+    #cv2.imshow('Threshold Image', threshold)
+    #cv2.waitKey(0)
 
     # Find contours on the thresholded image
     contours, _ = cv2.findContours(threshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -146,7 +94,7 @@ def drawPolygon(src_img):
         area = cv2.contourArea(cnt)
 
         # Shortlist based on area --> doesn't detect too small areas
-        if area > 400:
+        if area > 10000:
             # Find Polygons shapes
             approx = cv2.approxPolyDP(cnt, 0.009 * cv2.arcLength(cnt, True), True)
             if (len(approx) == 4):  # select only if the polygon has 4 edges
@@ -162,10 +110,10 @@ def drawPolygon(src_img):
     contours, _ = cv2.findContours(threshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     for cnt in contours:
         area = cv2.contourArea(cnt)
-        if area > 100:
+        if area > 10000:
             approx = cv2.approxPolyDP(cnt, 0.009 * cv2.arcLength(cnt, True), True)
             if (len(approx) == 4):
-                cv2.drawContours(blank, [approx], 0, (0, 0, 255), 2)
+                cv2.drawContours(blank, [approx], 0, (0, 0, 255), 1)
                 cv2.imshow('Contoured Blank Image', blank)
                 return blank, True
 
@@ -177,41 +125,42 @@ def drawPolygon(src_img):
 
 
 
-def drawPolygon_params(src_img, alpha, beta, bil_param1, bil_param2, threshold, approx):
+def drawPolygon_params(src_img, alpha, beta, threshold):
     new_image = np.zeros(src_img.shape, src_img.dtype)
     blank = 255 * np.ones_like(src_img)
 
     new_image[:, :, :] = np.clip(alpha * src_img[:, :, :] + beta, 0, 255)
-    cv2.imshow('Contrast', new_image)
-    cv2.waitKey(0)
+    #cv2.imshow('Contrast', new_image)
+    #cv2.waitKey(0)
 
     gray_img = cv2.cvtColor(new_image, cv2.COLOR_BGR2GRAY)
 
-    # flt = cv2.GaussianBlur(gray_img, (5, 5), 0)
-    flt = cv2.bilateralFilter(gray_img, bil_param1, bil_param2, bil_param2)
-    cv2.imshow('Filtered Image', flt)
-    cv2.waitKey(0)
+    #flt = cv2.GaussianBlur(gray_img, (5, 5), 0)
 
-    # Thresholding --> binary image
     _, threshold = cv2.threshold(gray_img, threshold, 255, cv2.THRESH_BINARY_INV)
-    cv2.imshow('Threshold Image', threshold)
-    cv2.waitKey(0)
+    #cv2.imshow('Threshold Image', threshold)
+    #cv2.waitKey(0)
 
     # Find contours on the thresholded image
     contours, _ = cv2.findContours(threshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
     for cnt in contours:
         area = cv2.contourArea(cnt)
-        if area > 400:
+        if area > 10000:
             try:
-                approx = cv2.approxPolyDP(cnt, approx * cv2.arcLength(cnt, True), True)
+                approx = cv2.approxPolyDP(cnt, 0.009 * cv2.arcLength(cnt, True), True)
             except:
                 return blank, False
             if (len(approx) == 4):
-                cv2.drawContours(blank, [approx], 0, (0, 0, 255), 2)
-                cv2.imshow('Contoured Blank Image', blank)
-                cv2.waitKey(0)
+                cv2.drawContours(blank, [approx], 0, (0, 0, 255), 1)
+                #cv2.imshow('Contoured Blank Image', blank)
+                #cv2.waitKey(0)
                 return blank, True  # break to the first found
+            #if (len(approx) == 8):
+                #cv2.drawContours(blank, [approx], 0, (0, 0, 255), 1)
+                #cv2.imshow('Contoured Blank Image', blank)
+                #cv2.waitKey(0)
+                #return blank, True  # break to the first found
 
     return blank, False
 
@@ -342,29 +291,31 @@ if __name__ == '__main__':
         cv2.waitKey(0)
         found = False
 
-        #drawPolygon2(roi_img)  # blank image with the rectangle
-        # blank_pol, found = drawPolygon_prova(roi_img)
-        # draPolygon_params(src_img, alpha, beta, bil_param1, bil_param2, threshold, approx)
-
-        blank_pol, found = drawPolygon_params(roi_img, 10.0, -500, 17, 17, 60, 0.009)  # blocco 0, 1, 3
+        blank_pol, found = drawPolygon_params(roi_img, 10.0, -500, 60)
         if not found:
             print('1 didnt work')
-            blank_pol, found = drawPolygon_params(roi_img, 1.0, 0, 17, 17, 60, 0.009)  # img chiare
+            blank_pol, found = drawPolygon_params(roi_img, 1.0, 0, 60)
             if not found:
                 print('2 didnt work')
-                blank_pol, found = drawPolygon_params(roi_img, 10.0, -300, 11, 50, 100, 0.009)  # dorate
+                blank_pol, found = drawPolygon_params(roi_img, 10.0, -300, 100)
                 if not found:
                     print('3 didnt work')
-                    blank_pol, found = drawPolygon_params(roi_img, 1.0, 0, 17, 17, 120, 0.009)  # img chiare
+                    blank_pol, found = drawPolygon_params(roi_img, 2.0, 0, 120)
                     if not found:
                         print('4 didnt work')
-                        blank_pol, found = drawPolygon_params(roi_img, 7.0, -500, 17, 17, 80, 0.009)  # grigie
+                        blank_pol, found = drawPolygon_params(roi_img, 7.0, -500, 90)
                         if not found:
                             print('5 didnt work')
-                            blank_pol, found = drawPolygon_params(roi_img, 7.0, -500, 11, 17, 200, 0.009)  # extra
+                            blank_pol, found = drawPolygon_params(roi_img, 7.0, -500, 200)
                             if not found:
-                                blank_pol, found = drawPolygon(roi_img)
-
+                                print('6 didnt work')
+                                blank_pol, found = drawPolygon_params(roi_img, 1.0, 0, 150)
+                                if not found:
+                                    print('7 didnt work')
+                                    blank_pol, found = drawPolygon_params(roi_img, 1.0, 0, 160)
+                                    if not found:
+                                        print('8 didnt work')
+                                        blank_pol, found = drawPolygon(roi_img)
 
         if found:
             corners_src, found = findCorners(blank_pol)
@@ -378,32 +329,3 @@ if __name__ == '__main__':
                 print('No corners found')
         else:
             print('No shape found')
-
-
-        '''
-        
-        # ---------- OLD LOLLY CODE ----------
-        x, y, w, h = cv2.getWindowImageRect('ROI Image')
-        corners_dst = [[w,h], [0,h], [w,0], [0,0]]
-        print(corners_dst)
-        pts1 = np.float32(corners_src)
-        pts2 = np.float32(corners_dst)
-        matrix = cv2.getPerspectiveTransform(pts1, pts2)
-        result = cv2.warpPerspective(roi_img, matrix, (w, h))
-        
-        
-        blank_pol, found = draPolygon_params(roi_img, 10.0, -500, 17, 17, 60, 0.009)  # blocco 0, 1, 3
-        if not found:
-            print('1 didnt work')
-            blank_pol, found = draPolygon_params(roi_img, 1.0, 0, 17, 17, 60, 0.009)  # img chiare
-            if not found:
-                print('2 didnt work')
-                blank_pol, found = draPolygon_params(roi_img, 10.0, -200, 11, 50, 120, 0.009)  # dorate
-                if not found:
-                    print('3 didnt work')
-                    blank_pol, found = draPolygon_params(roi_img, 1.0, 0, 17, 17, 120, 0.009)  # img chiare
-                    if not found:
-                        print('4 didnt work')
-                        blank_pol, found = draPolygon_params(roi_img, 7.0, -500, 17, 17, 80, 0.009)  # grigie
-
-        '''
