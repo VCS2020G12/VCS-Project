@@ -3,14 +3,7 @@ import numpy as np
 from os import listdir
 from os.path import isfile, join
 import matplotlib.pyplot as plt
-from scipy import signal, ndimage
-# from sklearn.preprocessing import normalize
-from skimage.transform import resize
-import imutils
-from sklearn.cluster import KMeans
-import skimage.segmentation as seg
-from skimage import img_as_ubyte
-import skimage.color as color
+
 
 # ------------ CORNER DETECTION: 2 WAYS ------------
 '''
@@ -71,59 +64,6 @@ def cornerHarris(src, thresh):
 This code takes an input image (RGB, already cut in ROI shape), detects inside one polygon 
 with 4 edges and draws the result on a blank image which is then returned
 '''
-
-
-def drawPolygon(src_img):
-    gray_img = cv2.cvtColor(src_img, cv2.COLOR_BGR2GRAY)
-    blank = 255 * np.ones_like(src_img)
-
-    # flt = cv2.GaussianBlur(gray_img, (5, 5), 0)
-    # flt = cv2.cv2.bilateralFilter(gray_img, 11, 17, 17)
-    # cv2.imshow('Filtered Image', flt)
-    # cv2.waitKey(0)
-
-    # Thresholding --> binary image
-    _, threshold = cv2.threshold(gray_img, 60, 255, cv2.THRESH_BINARY_INV)
-    #cv2.imshow('Threshold Image', threshold)
-    #cv2.waitKey(0)
-
-    # Find contours on the thresholded image
-    contours, _ = cv2.findContours(threshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-    for cnt in contours:
-        area = cv2.contourArea(cnt)
-
-        # Shortlist based on area --> doesn't detect too small areas
-        if area > 10000:
-            # Find Polygons shapes
-            approx = cv2.approxPolyDP(cnt, 0.009 * cv2.arcLength(cnt, True), True)
-            if (len(approx) == 4):  # select only if the polygon has 4 edges
-                cv2.drawContours(blank, [approx], 0, (0, 0, 255), 2)  # draw the contour on the blank image
-                cv2.imshow('Contoured Blank Image', blank)
-                cv2.waitKey(0)
-                return blank, True  # break to the first found
-
-
-    _, threshold = cv2.threshold(gray_img, 120, 255, cv2.THRESH_BINARY)
-    # cv2.imshow('Threshold Image', threshold)
-    # cv2.waitKey(0)
-    contours, _ = cv2.findContours(threshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    for cnt in contours:
-        area = cv2.contourArea(cnt)
-        if area > 10000:
-            approx = cv2.approxPolyDP(cnt, 0.009 * cv2.arcLength(cnt, True), True)
-            if (len(approx) == 4):
-                cv2.drawContours(blank, [approx], 0, (0, 0, 255), 1)
-                cv2.imshow('Contoured Blank Image', blank)
-                return blank, True
-
-    # Exiting the windows if 'q' is pressed on the keyboard
-    if cv2.waitKey(0) & 0xFF == ord('q'):
-        cv2.destroyAllWindows()
-
-    return blank, False
-
-
 
 def drawPolygon_params(src_img, alpha, beta, threshold):
     new_image = np.zeros(src_img.shape, src_img.dtype)
@@ -280,6 +220,49 @@ def four_point_transform(image, pts):
     return warped
 
 
+def rectification(roi_img):
+    blank_pol, found = drawPolygon_params(roi_img, 10.0, -500, 60)  # blocco 0, 1, 3
+    if not found:
+        print('1 didnt work')
+        blank_pol, found = drawPolygon_params(roi_img, 1.0, 0, 60)  # img chiare
+        if not found:
+            print('2 didnt work')
+            blank_pol, found = drawPolygon_params(roi_img, 10.0, -300, 100)  # dorate
+            if not found:
+                print('3 didnt work')
+                blank_pol, found = drawPolygon_params(roi_img, 2.0, 0, 120)  # img chiare
+                if not found:
+                    print('4 didnt work')
+                    blank_pol, found = drawPolygon_params(roi_img, 7.0, -500, 90)  # grigie
+                    if not found:
+                        print('5 didnt work')
+                        blank_pol, found = drawPolygon_params(roi_img, 7.0, -500, 200)  # extra
+                        if not found:
+                            print('6 didnt work')
+                            blank_pol, found = drawPolygon_params(roi_img, 1.0, 0, 150)  # 8 lati
+                            if not found:
+                                print('7 didnt work')
+                                blank_pol, found = drawPolygon_params(roi_img, 1.0, 0, 160)
+                                if not found:
+                                    print('8 didnt work')
+                                    blank_pol, found = drawPolygon_params(roi_img, 1.0, 0, 120)
+                                    if not found:
+                                        print('9 didnt work')
+                                        blank_pol, found = drawPolygon_params(roi_img, 7.0, -800, 140)
+
+    if found:
+        corners_src, found = findCorners(blank_pol)
+        if found:
+            corners_src = np.asarray(corners_src, dtype=np.int)
+            result = four_point_transform(roi_img, corners_src)
+            cv2.imshow('Perspective Transform', result)
+            cv2.waitKey(0)
+        else:
+            print('No corners found')
+    else:
+        print('No shape found')
+
+
 if __name__ == '__main__':
     files = [f for f in listdir("data/images/") if isfile(join("data/images/", f))]
     files = sorted(files)
@@ -291,41 +274,4 @@ if __name__ == '__main__':
         cv2.waitKey(0)
         found = False
 
-        blank_pol, found = drawPolygon_params(roi_img, 10.0, -500, 60)
-        if not found:
-            print('1 didnt work')
-            blank_pol, found = drawPolygon_params(roi_img, 1.0, 0, 60)
-            if not found:
-                print('2 didnt work')
-                blank_pol, found = drawPolygon_params(roi_img, 10.0, -300, 100)
-                if not found:
-                    print('3 didnt work')
-                    blank_pol, found = drawPolygon_params(roi_img, 2.0, 0, 120)
-                    if not found:
-                        print('4 didnt work')
-                        blank_pol, found = drawPolygon_params(roi_img, 7.0, -500, 90)
-                        if not found:
-                            print('5 didnt work')
-                            blank_pol, found = drawPolygon_params(roi_img, 7.0, -500, 200)
-                            if not found:
-                                print('6 didnt work')
-                                blank_pol, found = drawPolygon_params(roi_img, 1.0, 0, 150)
-                                if not found:
-                                    print('7 didnt work')
-                                    blank_pol, found = drawPolygon_params(roi_img, 1.0, 0, 160)
-                                    if not found:
-                                        print('8 didnt work')
-                                        blank_pol, found = drawPolygon(roi_img)
-
-        if found:
-            corners_src, found = findCorners(blank_pol)
-            if found:
-                corners_src = np.asarray(corners_src, dtype=np.int)
-                result = four_point_transform(roi_img, corners_src)
-                # cv2.imshow('ROI Image', roi_img)
-                cv2.imshow('Perspective Transform', result)
-                cv2.waitKey(0)
-            else:
-                print('No corners found')
-        else:
-            print('No shape found')
+        rectification(roi_img)
