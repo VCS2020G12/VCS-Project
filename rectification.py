@@ -7,6 +7,7 @@ import skimage.segmentation as seg
 from skimage import img_as_ubyte
 import skimage.color as color
 
+DEBUG = False
 
 # ------------ CORNER DETECTION: 2 WAYS ------------
 '''
@@ -32,8 +33,9 @@ def findCorners(src):
 
     # check if it's barely regular
 
-    cv2.imshow('Corners', src)
-    cv2.waitKey(0)
+    if DEBUG:
+        cv2.imshow('Corners', src)
+        cv2.waitKey(0)
 
     return out_corners, True
 
@@ -56,11 +58,13 @@ def cornerHarris(src, thresh):
             if int(dst_norm[i, j]) > thresh:
                 corners.append([j, i])
                 count_corners += 1
-                print("Count:", count_corners, "Center coords: (", j, ",", i, ")")
+                if DEBUG:
+                    print("Count:", count_corners, "Center coords: (", j, ",", i, ")")
                 cv2.circle(src, (j, i), 5, 0, 2)
 
-    cv2.imshow("Corners", src)
-    cv2.waitKey(0)
+    if DEBUG:
+        cv2.imshow("Corners", src)
+        cv2.waitKey(0)
     return corners
 
 
@@ -128,8 +132,10 @@ def rectification_mask(roi_img):
     # roi_img = img_as_ubyte(color.label2rgb(image_slic, roi_img, kind='avg'))
     roi_img = img_as_ubyte(color.label2rgb(image_slic, roi_img, kind='avg', bg_label=-1))
     image = cv2.bilateralFilter(roi_img, 9, 75, 75)
-    cv2.imshow('SLIC', roi_img)
-    cv2.waitKey(0)
+
+    if DEBUG:
+        cv2.imshow('SLIC', roi_img)
+        cv2.waitKey(0)
 
     mask = np.zeros(image.shape, dtype=np.uint8)
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -278,17 +284,23 @@ def rectification(roi_img):
             found = False
 
     if found:
-        print('Method:', method)
+        if DEBUG:
+            print('Method:', method)
         corners_src, found = findCorners(mask)
         if found:
             corners_src = np.asarray(corners_src, dtype=np.int)
             result = four_point_transform(roi_img, corners_src)
             cv2.imshow('Perspective Transform', result)
-            cv2.waitKey(0)
+            if DEBUG:
+                cv2.waitKey(0)
+            return result
         else:
-            print('No corners found')
+            if DEBUG:
+                print('No corners found')
     else:
-        print('No shape found')
+        if DEBUG:
+            print('No shape found')
+    return None
 
 
 if __name__ == '__main__':

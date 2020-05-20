@@ -2,6 +2,9 @@ import os
 import cv2
 import painting_detection.darknet as darknet
 from pathlib import Path
+import rectification
+import retrieval
+from PIL import Image
 
 
 def convert_back(x, y, w, h):
@@ -124,6 +127,10 @@ def process_video(video_file, jump=0):
 
     jump_index = 0  # Tracks the jump factor
     old_rois = 0  # Tracks the number of roi windows in the previous iteration
+
+    # Setup Painting retrieval data
+    retrieval.setup()
+
     while True:
         ret, frame_read = cap.read()
 
@@ -143,20 +150,35 @@ def process_video(video_file, jump=0):
 
             detections = darknet.detect_image(netMain, metaMain, darknet_image, thresh=0.25)
 
-            image = cv_draw_boxes(detections, frame_resized)
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            image = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
+            rois = cv_cut_boxes(detections, frame_resized)
+            image = cv_draw_boxes(detections, image)
+
             out.write(image)
 
             cv2.imshow('Painting Detection', image)
             cv2.moveWindow('Painting Detection', 0, 0)
             # Show every painting detected
-            rois = cv_cut_boxes(detections, frame_resized)
 
             actual_rois = 0
             position = 100
             for i, roi in enumerate(rois):
                 cv2.imshow('ROI ' + str(i+1), roi)
                 cv2.moveWindow("ROI " + str(i + 1), image.shape[1] + position, 0)
+
+                # Call rectification on roi
+                rectified_image = rectification.rectification(roi)
+
+                if rectified_image is not None:
+                    match_painting = retrieval.match_painting(Image.fromarray
+                                                                     (rectified_image.astype('uint8'), 'RGB'))
+
+                    if match_painting is not None:
+                        print("File name:", match_painting.file_name)
+                        print("Title:", match_painting.title)
+                        print("Author:", match_painting.author)
+                        print("Room:", match_painting.room)
+
                 position += 200
                 actual_rois += 1
 
