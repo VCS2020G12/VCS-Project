@@ -177,8 +177,7 @@ def cut2ROI(file_name):
     img = cv2.imread("data/images/" + file_name)
     img_h, img_w, c = img.shape
 
-    # with open("data/labels/" + file_name.split('.')[0] + ".txt", 'r') as file:
-    with open("../data/labels/" + file_name.split('.')[0] + ".txt", 'r') as file:
+    with open("data/labels/" + file_name.split('.')[0] + ".txt", 'r') as file:
         for row in file:
             robj_class, rcenter_X, rcenter_Y, rwidth, rheight = row.split()
             rcenter_X_px = float(rcenter_X) * img_w
