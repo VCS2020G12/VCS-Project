@@ -5,6 +5,10 @@ from pathlib import Path
 import rectification
 import retrieval
 from PIL import Image
+import time
+
+# Parameters
+OUTPUT = False
 
 
 def convert_back(x, y, w, h):
@@ -68,17 +72,17 @@ metaMain = None
 altNames = None
 
 
-def process_video(video_file, jump=0):
+def process_video(video_file, JUMP=0):
     """
     Process video_file applying all the processing workflow starting from painting detection.
     :param video_file: input file to use.
-    :param jump: jump factor to use. Default: 0, no jump.
+    :param JUMP: jump factor to use. Default: 0, no jump.
     :return: None.
     """
 
     global metaMain, netMain, altNames
     config_path = "./painting_detection/yolo-obj.cfg"
-    weight_path = str(Path.home()) + "/yolo-obj_8000.weights"
+    weight_path = str(Path.home()) + "/yolo-obj_final.weights"
     meta_path = "./painting_detection/obj.data"
     if not os.path.exists(config_path):
         raise ValueError("Invalid config path `" +
@@ -117,10 +121,11 @@ def process_video(video_file, jump=0):
     cap = cv2.VideoCapture(video_file)
     cap.set(3, 1280)
     cap.set(4, 720)
-    fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
-    size = (darknet.network_width(netMain), darknet.network_height(netMain))
-    out = cv2.VideoWriter()
-    out.open("out.mp4", fourcc, 30, size, True)
+    if OUTPUT:
+        fourcc = cv2.VideoWriter_fourcc('m', 'p', '4', 'v')
+        size = (darknet.network_width(netMain), darknet.network_height(netMain))
+        out = cv2.VideoWriter()
+        out.open("out.mp4", fourcc, 30, size, True)
 
     # Image to be reused at each detection
     darknet_image = darknet.make_image(darknet.network_width(netMain), darknet.network_height(netMain), 3)
@@ -132,13 +137,15 @@ def process_video(video_file, jump=0):
     retrieval.setup()
 
     while True:
+        tic = time.time()  # Keep track of FPS
+
         ret, frame_read = cap.read()
 
         # If the frame was not grabbed, then we have reached the end of the stream
         if not ret:
             break
 
-        if jump_index < jump:
+        if jump_index < JUMP:
             jump_index += 1
         else:
             jump_index = 0
@@ -150,16 +157,19 @@ def process_video(video_file, jump=0):
 
             detections = darknet.detect_image(netMain, metaMain, darknet_image, thresh=0.25)
 
-            image = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
-            rois = cv_cut_boxes(detections, frame_resized)
-            image = cv_draw_boxes(detections, image)
+            painting_detections = [detection for detection in detections if detection[0] == b'painting']
 
-            out.write(image)
+            image = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
+            rois = cv_cut_boxes(painting_detections, frame_resized)
+            image = cv_draw_boxes(detections, image)
 
             cv2.imshow('Painting Detection', image)
             cv2.moveWindow('Painting Detection', 0, 0)
-            # Show every painting detected
 
+            if OUTPUT:
+                out.write(image)
+
+            # Show every painting detected
             actual_rois = 0
             position = 100
             for i, roi in enumerate(rois):
@@ -174,10 +184,14 @@ def process_video(video_file, jump=0):
                                                                      (rectified_image.astype('uint8'), 'RGB'))
 
                     if match_painting is not None:
-                        print("File name:", match_painting.file_name)
-                        print("Title:", match_painting.title)
-                        print("Author:", match_painting.author)
-                        print("Room:", match_painting.room)
+                        print("..................................Painting detected..................................")
+                        print("Title:   ", match_painting.title)
+                        print("Author:  ", match_painting.author)
+                        print("Room:    ", match_painting.room)
+                        print("Db image:", match_painting.file_name)
+                        print(".....................................................................................")
+
+
 
                 position += 200
                 actual_rois += 1
@@ -188,7 +202,11 @@ def process_video(video_file, jump=0):
                     cv2.destroyWindow("ROI " + str(i+1))
             old_rois = actual_rois
 
-            cv2.waitKey(3)
+            cv2.waitKey(2)
+
+            # Keep track of performance
+            print("FPS:", round(1 / (time.time() - tic), 2))
     cap.release()
-    out.release()
     cv2.destroyAllWindows()
+    if OUTPUT:
+        out.release()
