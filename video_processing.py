@@ -6,9 +6,12 @@ import rectification
 import retrieval
 from PIL import Image
 import time
+import keyboard
 
 # Parameters
-OUTPUT = False
+OUTPUT = False  # Used to generate or not an output file
+RUNNING = True  # Used to pause or resume the program
+MAX_FPS = 0  # Maximum FPS desired by the user (0 means no limit)
 
 
 def convert_back(x, y, w, h):
@@ -72,6 +75,17 @@ metaMain = None
 altNames = None
 
 
+def pause():
+    """
+    Pause the elaboration pressing <SPACE> key. Resume pressing the same key. (sudo is required in order to work)
+    :return: None.
+    """
+
+    global RUNNING
+    RUNNING = not RUNNING
+    time.sleep(0.3)
+
+
 def process_video(video_file, JUMP=0):
     """
     Process video_file applying all the processing workflow starting from painting detection.
@@ -79,6 +93,9 @@ def process_video(video_file, JUMP=0):
     :param JUMP: jump factor to use. Default: 0, no jump.
     :return: None.
     """
+
+    if os.getuid() == 0:  # Enable pause elaboration with key press
+        keyboard.on_press_key("SPACE", lambda _: pause())
 
     global metaMain, netMain, altNames
     config_path = "./painting_detection/yolo-obj.cfg"
@@ -132,11 +149,15 @@ def process_video(video_file, JUMP=0):
 
     jump_index = 0  # Tracks the jump factor
     old_rois = 0  # Tracks the number of roi windows in the previous iteration
+    room_id = None  # Defines id room in the video
 
     # Setup Painting retrieval data
     retrieval.setup()
 
     while True:
+        while not RUNNING:
+            time.sleep(0.1)
+
         tic = time.time()  # Keep track of FPS
 
         ret, frame_read = cap.read()
@@ -158,6 +179,7 @@ def process_video(video_file, JUMP=0):
             detections = darknet.detect_image(netMain, metaMain, darknet_image, thresh=0.25)
 
             painting_detections = [detection for detection in detections if detection[0] == b'painting']
+            people_detections = [detection for detection in detections if detection[0] == b'person']
 
             image = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
             rois = cv_cut_boxes(painting_detections, frame_resized)
@@ -184,6 +206,7 @@ def process_video(video_file, JUMP=0):
                                                                      (rectified_image.astype('uint8'), 'RGB'))
 
                     if match_painting is not None:
+                        room_id = match_painting.room
                         print("..................................Painting detected..................................")
                         print("Title:   ", match_painting.title)
                         print("Author:  ", match_painting.author)
@@ -202,10 +225,27 @@ def process_video(video_file, JUMP=0):
                     cv2.destroyWindow("ROI " + str(i+1))
             old_rois = actual_rois
 
+            # Print detected people
+            if len(people_detections) > 0:
+                print("..................................People detected..................................")
+                print("Number of people:", len(people_detections))
+                if room_id is None:
+                    print("Room id:          To be determined")
+                else:
+                    print("Room id:         ", room_id)
+                print(".....................................................................................")
+
             cv2.waitKey(2)
 
+            iteration_time = (time.time() - tic)
+            wait_time = 0
+            if MAX_FPS != 0:
+                if 1 / MAX_FPS > iteration_time:
+                    wait_time = (1 / MAX_FPS) - iteration_time
+                    time.sleep(wait_time)
             # Keep track of performance
-            print("FPS:", round(1 / (time.time() - tic), 2))
+            print("FPS:", round(1 / (wait_time + iteration_time), 2))
+
     cap.release()
     cv2.destroyAllWindows()
     if OUTPUT:
