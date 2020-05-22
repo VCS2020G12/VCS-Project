@@ -1,9 +1,10 @@
 import os
 import cv2
-import painting_detection.darknet as darknet
+import detection.darknet as darknet
 from pathlib import Path
 import rectification
 import retrieval
+import face_detect
 from PIL import Image
 import time
 import keyboard
@@ -98,9 +99,9 @@ def process_video(video_file, JUMP=0):
         keyboard.on_press_key("SPACE", lambda _: pause())
 
     global metaMain, netMain, altNames
-    config_path = "./painting_detection/yolo-obj.cfg"
+    config_path = "./detection/yolo-obj.cfg"
     weight_path = str(Path.home()) + "/yolo-obj_final.weights"
-    meta_path = "./painting_detection/obj.data"
+    meta_path = "./detection/obj.data"
     if not os.path.exists(config_path):
         raise ValueError("Invalid config path `" +
                          os.path.abspath(config_path)+"`")
@@ -154,6 +155,9 @@ def process_video(video_file, JUMP=0):
     # Setup Painting retrieval data
     retrieval.setup()
 
+    # Setup Face Detection
+    face_detect.setup()
+
     while True:
         while not RUNNING:
             time.sleep(0.1)
@@ -183,6 +187,7 @@ def process_video(video_file, JUMP=0):
 
             image = cv2.cvtColor(frame_resized, cv2.COLOR_BGR2RGB)
             rois = cv_cut_boxes(painting_detections, frame_resized)
+            actual_frame = image.copy()
             image = cv_draw_boxes(detections, image)
 
             cv2.imshow('Painting Detection', image)
@@ -214,9 +219,7 @@ def process_video(video_file, JUMP=0):
                         print("Db image:", match_painting.file_name)
                         print(".....................................................................................")
 
-
-
-                position += 200
+                position += roi.shape[1] + 20
                 actual_rois += 1
 
             # Delete useless old rois
@@ -227,12 +230,17 @@ def process_video(video_file, JUMP=0):
 
             # Print detected people
             if len(people_detections) > 0:
+                faces = face_detect.get_faces(actual_frame)
                 print("..................................People detected..................................")
-                print("Number of people:", len(people_detections))
-                if room_id is None:
-                    print("Room id:          To be determined")
+                print("Number of people:     ", len(people_detections))
+                if len(people_detections) - faces >= 0:
+                    print("Looking at a painting:", len(people_detections) - faces)
                 else:
-                    print("Room id:         ", room_id)
+                    print("Looking at a painting: 0")
+                if room_id is None:
+                    print("Room id:               To be determined")
+                else:
+                    print("Room id:              ", room_id)
                 print(".....................................................................................")
 
             cv2.waitKey(2)

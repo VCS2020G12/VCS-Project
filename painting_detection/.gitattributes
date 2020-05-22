@@ -1,1 +1,0 @@
-yolo-obj_8000.weights filter=lfs diff=lfs merge=lfs -text

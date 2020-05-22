@@ -291,6 +291,7 @@ def rectification(roi_img):
             corners_src = np.asarray(corners_src, dtype=np.int)
             result = four_point_transform(roi_img, corners_src)
             cv2.imshow('Perspective Transform', result)
+
             if DEBUG:
                 cv2.waitKey(0)
             return result
