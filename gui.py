@@ -3,11 +3,13 @@ from PIL import ImageTk, Image
 from tkinter import filedialog
 import video_processing
 
+# HEIGHT = 1000
+# WIDTH = 900
 
 root = Tk()
-root.title('Application')
-# root.iconbitmap('images/icon.ico')
-root.geometry("500x500")
+root.title('Painting Detection and Recognition')
+root.geometry("900x1000")
+root.resizable(0,0)
 
 # Center the frame
 windowWidth = root.winfo_reqwidth()
@@ -16,56 +18,61 @@ positionRight = int(root.winfo_screenwidth() / 2 - windowWidth / 2) - 150
 positionDown = int(root.winfo_screenheight() / 2 - windowHeight / 2) - 150
 root.geometry("+{}+{}".format(positionRight, positionDown))
 
-# ------------------------ CHOOSE DIRECTORY OR FILE ------------------------
-frame1 = LabelFrame(root, text="  Choose between a directory or a file  ")
-frame1.pack(fill="x", padx=8, pady=8)
+# canvas = Canvas(root, height=HEIGHT, width=WIDTH)
+# canvas.pack()
 
-r = IntVar()
-
-Radiobutton(frame1, text="Directory", variable=r, value=1).grid(row=0, column=0)
-Radiobutton(frame1, text="File", variable=r, value=2).grid(row=0, column=1)
+background_image = PhotoImage(file='images/background.png')
+background_label = Label(root, image=background_image)
+background_label.place(relwidth=1, relheight=1)
 
 
 # -------------------------- SELECT PATH DIR/FILE --------------------------
 def open_file():
-    frame2.filename = filedialog.askopenfilename(initialdir="/", title="Select a file", filetypes=(("mp4 files", "*.mp4"), ("MOV files", "*.MOV"), ("avi files", "*.avi"), ("All files", "*.*")))
+    frame_path.filename = filedialog.askopenfilename(initialdir="/", title="Select a file", filetypes=(("mp4 files", "*.mp4"), ("MOV files", "*.MOV"), ("avi files", "*.avi"), ("All files", "*.*")))
     e.delete(0, END)
-    e.insert(0, frame2.filename)
-    # Label(frame2, text=frame2.filename).pack()
+    e.insert(0, frame_path.filename)
+    # Label(path, text=frame_path.filename).pack()
 
 
-frame2 = LabelFrame(root, text="  Select the file/directory  ")
-frame2.pack(fill="x", padx=8, pady=8)
-e = Entry(frame2, width=71, fg="#696969")
-e.pack(padx=5, pady=5, side=LEFT)
-e.insert(END, "Enter the path")  # suggestion text
-Button(frame2, text=" ... ", command=open_file).pack(padx=5, pady=5, side=RIGHT)
+frame_path = Frame(root, bg='#ffffff', bd=5)
+frame_path.place(relx=0.5, rely=0.1, relwidth=0.9, relheight=0.15, anchor='n')
+Label(frame_path, width=34, fg="#696969", bg='#ffffff', font=5, text='Type or select the path of the video:', anchor='w').grid(row=0, padx=10, pady=10)
+e = Entry(frame_path, width=34, fg="#696969", bg='#ffffff', font=9)
+e.grid(row=1, column=0, padx=10, pady=10)
+e.insert(END, "Enter the path")
+Button(frame_path, text=" ... ", command=open_file, bg='#ffffff').grid(row=1, column=1, padx=10, pady=10)
 
-
-# ----------------------------- CHOOSE OPTIONS -----------------------------
-frame3 = LabelFrame(root, text="  Select the configuration  ")
-frame3.pack(fill="x", padx=8, pady=8)
+# ----------------------------- SELECT OPTIONS -----------------------------
+frame_options = Frame(root, bg='#ffffff', bd=5)
+frame_options.place(relx=0.5, rely=0.29, relwidth=0.9, relheight=0.4, anchor='n')
+Label(frame_options, width=34, fg="#696969", bg='#ffffff', font=5, text='Optional features').grid(row=0)
 
 
 def var_states():
-    Label(root, text="Perform for path %s with config %d-%d-%d-%d-%d" % (e.get(), pnt_detection.get(), pnt_rectification.get(), pnt_retrieval.get(), ppl_detection.get(), ppl_localization.get())).pack()
+    #Label(frame_return, text="Perform for path %s with config %d-%d-%d" % (e.get(), jump.get(), max_fps.get(), output_video.get())).pack()
     video_processing.process_video(e.get(), 0)
 
 
-pnt_detection = IntVar()
-pnt_rectification = IntVar()
-pnt_retrieval = IntVar()
-ppl_detection = IntVar()
-ppl_localization = IntVar()
-Checkbutton(frame3, text="Painting Detection", variable=pnt_detection).grid(row=0, sticky=W)
-Checkbutton(frame3, text="Painting Rectification", variable=pnt_rectification).grid(row=1, sticky=W)
-Checkbutton(frame3, text="Painting Retrieval", variable=pnt_retrieval).grid(row=2, sticky=W)
-Checkbutton(frame3, text="People Detection", variable=ppl_detection).grid(row=3, sticky=W)
-Checkbutton(frame3, text="People Localization", variable=ppl_localization).grid(row=4, sticky=W)
+Label(frame_options, width=50, fg="#696969", bg='#ffffff', text='How many frames to jump during processing?', anchor='w').grid(row=1, padx=10)
+jump = Scale(frame_options, from_=0, to=100, orient=HORIZONTAL, bd=0, bg='#ffffff', length=400)
+jump.grid(row=2, padx=10, pady=10)
+Label(frame_options, width=50, fg="#696969", bg='#ffffff', text='Select the maximum number of fps to process', anchor='w').grid(row=3, padx=10)
+max_fps = Scale(frame_options, from_=0, to=100, orient=HORIZONTAL, bg='#ffffff', length=400)
+max_fps.grid(row=4, padx=10, pady=10)
+Label(frame_options, width=50, fg="#696969", bg='#ffffff', text='Do you want a video in output?', anchor='w').grid(row=5, padx=10)
+output_video = IntVar()
+Checkbutton(frame_options, text="Output Video", variable=output_video, bg='#ffffff', fg='#696969').grid(row=6, sticky=W, pady=10)
 
 # ------------------------------ ENTER OR QUIT ------------------------------
-Button(root, text='Start', command=var_states).pack(pady=3)
-Button(root, text='Quit', command=root.quit).pack(pady=3)
+
+frame_buttons = Frame(root, bg='#ffffff', bd=5)
+frame_buttons.place(relx=0.5, rely=0.73, relwidth=0.9, relheight=0.07, anchor='n')
+Button(frame_buttons, text='Start', command=var_states, bg='#ffffff', font=11, fg='#696969', anchor=W).grid(row=0, column=0, padx=3, pady=3)
+Button(frame_buttons, text='Quit', command=root.quit, bg='#ff7f7f', font=11, fg='#ffffff', anchor=W).grid(row=0, column=1, padx=3, pady=3)
+
+#frame_return = Frame(root, bg='#ffffff', bd=5)
+#frame_return.place(relx=0.5, rely=0.84, relwidth=0.9, relheight=0.07, anchor='n')
 
 
 root.mainloop()
+
