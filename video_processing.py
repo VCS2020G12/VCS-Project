@@ -10,9 +10,7 @@ import time
 import keyboard
 
 # Parameters
-OUTPUT = False  # Used to generate or not an output file
 RUNNING = True  # Used to pause or resume the program
-MAX_FPS = 0  # Maximum FPS desired by the user (0 means no limit)
 
 
 def convert_back(x, y, w, h):
@@ -87,11 +85,13 @@ def pause():
     time.sleep(0.3)
 
 
-def process_video(video_file, JUMP=0):
+def process_video(video_file, JUMP=0, MAX_FPS = 0, OUTPUT = False):
     """
     Process video_file applying all the processing workflow starting from painting detection.
     :param video_file: input file to use.
     :param JUMP: jump factor to use. Default: 0, no jump.
+    :param MAX_FPS: Maximum FPS desired by the user (0 means no limit).
+    :param OUTPUT: Used to generate or not (True / False) an output file.
     :return: None.
     """
 

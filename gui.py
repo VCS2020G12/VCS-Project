@@ -49,8 +49,7 @@ Label(frame_options, width=34, fg="#696969", bg='#ffffff', font=5, text='Optiona
 
 
 def var_states():
-    #Label(frame_return, text="Perform for path %s with config %d-%d-%d" % (e.get(), jump.get(), max_fps.get(), output_video.get())).pack()
-    video_processing.process_video(e.get(), 0)
+    video_processing.process_video(e.get(), jump.get(), max_fps.get(), bool(output_video.get()))
 
 
 Label(frame_options, width=50, fg="#696969", bg='#ffffff', text='How many frames to jump during processing?', anchor='w').grid(row=1, padx=10)
