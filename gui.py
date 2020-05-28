@@ -8,7 +8,7 @@ import video_processing
 
 root = Tk()
 root.title('Painting Detection and Recognition')
-root.geometry("900x1000")
+root.geometry("500x680")
 root.resizable(0,0)
 
 # Center the frame
@@ -53,10 +53,10 @@ def var_states():
 
 
 Label(frame_options, width=50, fg="#696969", bg='#ffffff', text='How many frames to jump during processing?', anchor='w').grid(row=1, padx=10)
-jump = Scale(frame_options, from_=0, to=100, orient=HORIZONTAL, bd=0, bg='#ffffff', length=400)
+jump = Scale(frame_options, from_=0, to=100, orient=HORIZONTAL, bd=0, bg='#ffffff', length=300)
 jump.grid(row=2, padx=10, pady=10)
 Label(frame_options, width=50, fg="#696969", bg='#ffffff', text='Select the maximum number of fps to process', anchor='w').grid(row=3, padx=10)
-max_fps = Scale(frame_options, from_=0, to=100, orient=HORIZONTAL, bg='#ffffff', length=400)
+max_fps = Scale(frame_options, from_=0, to=100, orient=HORIZONTAL, bg='#ffffff', length=300)
 max_fps.grid(row=4, padx=10, pady=10)
 Label(frame_options, width=50, fg="#696969", bg='#ffffff', text='Do you want a video in output?', anchor='w').grid(row=5, padx=10)
 output_video = IntVar()
