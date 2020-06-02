@@ -1,5 +1,5 @@
 import skimage.segmentation as seg
-from skimage import img_as_ubyte
+from skimage import img_as_ubyte, img_as_float
 import skimage.color as color
 
 import cv2
@@ -129,7 +129,7 @@ def four_point_transform(image, pts):
 
 
     # Load image, bilaterial blur, and Otsu's threshold
-
+'''
 def rectification_Casa(roi_img):
     dst=roi_img
     image_slic = seg.slic(roi_img, n_segments=3)
@@ -205,6 +205,85 @@ def rectification_Casa(roi_img):
     # cv2.waitKey(0)
     # cv2.imshow('mask', mask)
     # cv2.waitKey(0)
+    cv2.destroyAllWindows()
+'''
+def rectification_Casa(img):
+    dst=img
+    #kernel = np.ones((5, 5)) / (25)
+    #roi_img = cv2.filter2D(roi_img, -1, kernel)
+
+    # roi_img = cv2.bilateralFilter(res2, 9, 75, 75)
+    # cv2.imshow('Filter', roi_img)
+    # cv2.waitKey(0)
+
+    Z = img.reshape((-1, 3))
+    # convert to np.float32
+    Z = np.float32(Z)
+
+    # define criteria, number of clusters(K) and apply kmeans()
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.2)
+    K = 10
+    ret, label, center = cv2.kmeans(Z, K, None, criteria, 5, cv2.KMEANS_PP_CENTERS)
+
+    # Now convert back into uint8, and make original image
+    center = np.uint8(center)
+    res = center[label.flatten()]
+    res2 = res.reshape((img.shape))
+
+    clahe = cv2.createCLAHE(clipLimit=3., tileGridSize=(8, 8))
+    lab = cv2.cvtColor(res2, cv2.COLOR_BGR2LAB)  # convert from BGR to LAB color space
+    l, a, b = cv2.split(lab)  # split on 3 different channels
+    l2 = clahe.apply(l)  # apply CLAHE to the L-channel
+    lab = cv2.merge((l2, a, b))  # merge channels
+    img = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)  # convert from LAB to BGR
+
+    image_slic = seg.slic(img_as_float(img), n_segments=4, sigma=1, compactness=5,start_label=1)
+    image = img_as_ubyte(color.label2rgb(image_slic, img, kind='avg',bg_label=0))
+
+    mask = np.zeros(image.shape, dtype=np.uint8)
+
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    blur = cv2.bilateralFilter(gray, 9, 75, 75)
+    thresh = cv2.threshold(blur, 60, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+
+    edges = cv2.Canny(thresh, 100, 200)
+    # Perform morpholgical operations
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (10, 10))
+    #erosion = cv2.erode(edges, kernel, iterations=1)
+
+    #opening = cv2.morphologyEx(edges, cv2.MORPH_OPEN, kernel, iterations=1)
+    close = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel, iterations=1)
+
+    # Find distorted rectangle contour and draw onto a mask
+    cnts = cv2.findContours(close, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+
+    rect = cv2.minAreaRect(cnts[0])
+    box = cv2.boxPoints(rect)
+    box = np.int0(box)
+    cv2.drawContours(close, [box], 0, (0, 0, 255), 2)
+    cv2.fillPoly(mask, [box], (255, 255, 255))
+
+    mask_seg = np.zeros(image.shape, dtype=np.uint8)
+    mask_seg[10:-10,10:-10] = 255
+    mask = mask & mask_seg
+    # Find corners
+    mask = cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY)
+    corners = cv2.goodFeaturesToTrack(mask, 4, .9, 5)
+    out_corners=[]
+    if corners is not None:
+        for corner in corners:
+            x, y = corner.ravel()
+            out_corners.append([x, y])
+            cv2.circle(mask, (x, y), 3, 255, - 1)
+
+    corners_src = np.asarray(out_corners, dtype=np.int)
+    result = four_point_transform(dst, corners_src)
+    # cv2.imshow('ROI Image', roi_img)
+    cv2.imshow('Perspective Transform', result)
+    cv2.waitKey(0)
+
     cv2.destroyAllWindows()
 
 
