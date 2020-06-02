@@ -4,7 +4,7 @@ from os import listdir
 from os.path import isfile, join
 import matplotlib.pyplot as plt
 import skimage.segmentation as seg
-from skimage import img_as_ubyte
+from skimage import img_as_ubyte, img_as_float
 import skimage.color as color
 
 DEBUG = False
@@ -126,50 +126,63 @@ def rectification_polygon(src_img, alpha, beta, threshold):
 
 
 def rectification_mask(roi_img):
-    # dst=roi_img
-    #image_slic = seg.slic(roi_img, n_segments=3)
-    image_slic = seg.slic(roi_img, n_segments=3, start_label=0)
-    # roi_img = img_as_ubyte(color.label2rgb(image_slic, roi_img, kind='avg'))
-    roi_img = img_as_ubyte(color.label2rgb(image_slic, roi_img, kind='avg', bg_label=-1))
-    image = cv2.bilateralFilter(roi_img, 9, 75, 75)
+    dst = roi_img
+    # kernel = np.ones((5, 5)) / (25)
+    # roi_img = cv2.filter2D(roi_img, -1, kernel)
 
-    if DEBUG:
-        cv2.imshow('SLIC', roi_img)
-        cv2.waitKey(0)
+    # roi_img = cv2.bilateralFilter(res2, 9, 75, 75)
+    Z = roi_img.reshape((-1, 3))
+    # convert to np.float32
+    Z = np.float32(Z)
+
+    # define criteria, number of clusters(K) and apply kmeans()
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.2)
+    K = 10
+    ret, label, center = cv2.kmeans(Z, K, None, criteria, 5, cv2.KMEANS_PP_CENTERS)
+
+    # Now convert back into uint8, and make original image
+    center = np.uint8(center)
+    res = center[label.flatten()]
+    res2 = res.reshape((roi_img.shape))
+
+    clahe = cv2.createCLAHE(clipLimit=3., tileGridSize=(8, 8))
+    lab = cv2.cvtColor(res2, cv2.COLOR_BGR2LAB)  # convert from BGR to LAB color space
+    l, a, b = cv2.split(lab)  # split on 3 different channels
+    l2 = clahe.apply(l)  # apply CLAHE to the L-channel
+    lab = cv2.merge((l2, a, b))  # merge channels
+    img = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)  # convert from LAB to BGR
+
+    image_slic = seg.slic(img_as_float(img), n_segments=4, sigma=1, compactness=5, start_label=1)
+    image = img_as_ubyte(color.label2rgb(image_slic, img, kind='avg', bg_label=0))
 
     mask = np.zeros(image.shape, dtype=np.uint8)
+
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
     blur = cv2.bilateralFilter(gray, 9, 75, 75)
     thresh = cv2.threshold(blur, 60, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
 
+    edges = cv2.Canny(thresh, 100, 200)
     # Perform morpholgical operations
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (10, 10))
-    opening = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel, iterations=1)
-    close = cv2.morphologyEx(opening, cv2.MORPH_CLOSE, kernel, iterations=1)
-    # close = cv2.erode(close, kernel, iterations=3)
-    # cv2.imshow('Close',close)
-    # cv2.waitKey(0)
+    # erosion = cv2.erode(edges, kernel, iterations=1)
 
-    size = 5
-    kernel = np.ones((size, size))/(size**2)
+    # opening = cv2.morphologyEx(edges, cv2.MORPH_OPEN, kernel, iterations=1)
+    close = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel, iterations=1)
 
-    close = cv2.filter2D(close, -1, kernel)
-    # cv2.imshow('Close+filter', close)
-    # cv2.waitKey(0)
     # Find distorted rectangle contour and draw onto a mask
-
     cnts = cv2.findContours(close, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cnts = cnts[0] if len(cnts) == 2 else cnts[1]
 
     rect = cv2.minAreaRect(cnts[0])
     box = cv2.boxPoints(rect)
     box = np.int0(box)
-    cv2.drawContours(image, [box], 0, (0, 0, 255), 2)
-    # cv2.imshow('box', image)
-    # cv2.waitKey(0)
+    cv2.drawContours(close, [box], 0, (0, 0, 255), 2)
     cv2.fillPoly(mask, [box], (255, 255, 255))
-    # cv2.imshow('mask', mask)
-    # cv2.waitKey(0)
+
+    mask_seg = np.zeros(image.shape, dtype=np.uint8)
+    mask_seg[10:-10, 10:-10] = 255
+    mask = mask & mask_seg
 
     return mask, True
 
