@@ -8,7 +8,7 @@ Ubuntu 18.04 LTS, Ubuntu 20.04 LTS
 CUDA v10.2
 CUDNN v7.6.5
 OpenCV 4.3
-NVIDIA GT 840M, GTX 970, GTX 1050, GTX 1080
+NVIDIA GT 840M, GTX 970, GTX 1650, GTX 1080
 ```
 
 ## External dependencies
