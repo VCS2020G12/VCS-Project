@@ -85,7 +85,7 @@ $ sudo make install
 ```
 
 ### Darknet
-1. Clone `Darknet`
+1. Clone `darknet`
 ```sh
 $ git clone https://github.com/AlexeyAB/darknet
 ```
