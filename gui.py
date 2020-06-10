@@ -2,9 +2,9 @@ from tkinter import *
 from PIL import ImageTk, Image
 from tkinter import filedialog
 import video_processing
-
 root = Tk()
 root.title('Painting Detection and Recognition')
+root.tk.call('wm', 'iconphoto', root._w, PhotoImage(file='images/icon.png'))
 root.geometry("550x680")
 #root.resizable(0, 0)
 
