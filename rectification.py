@@ -150,9 +150,8 @@ def rectification_mask(roi_img):
     l, a, b = cv2.split(lab)  # split on 3 different channels
     l2 = clahe.apply(l)  # apply CLAHE to the L-channel
     lab = cv2.merge((l2, a, b))  # merge channels
-    img = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)  # convert from LAB to BGR
-
-    image_slic = seg.slic(img_as_float(img), n_segments=4, sigma=1, compactness=5, start_label=1)
+    
+    image_slic = seg.slic(img, n_segments=4, sigma=1, compactness=5, start_label=1)
     image = img_as_ubyte(color.label2rgb(image_slic, img, kind='avg', bg_label=0))
 
     mask = np.zeros(image.shape, dtype=np.uint8)
