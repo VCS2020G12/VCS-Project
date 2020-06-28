@@ -9,13 +9,14 @@ import skimage.color as color
 
 DEBUG = False
 
-# ------------ CORNER DETECTION: 2 WAYS ------------
-'''
-Results are pretty similar, the first uses the goodFeaturesToTrack method, the second the Harris method
-'''
-
+# ------------ CORNER DETECTION ------------
 
 def findCorners(src):
+    """
+    Find corners in a given mask
+    :param src: input mask
+    :return: corners found
+    """
     out_corners = []
     gray = cv2.cvtColor(src, cv2.COLOR_BGR2GRAY)
     gray = np.float32(gray)
@@ -32,7 +33,6 @@ def findCorners(src):
         cv2.circle(src, (x, y), 3, 255, - 1)
 
     # check if it's barely regular
-
     if DEBUG:
         cv2.imshow('Corners', src)
         cv2.waitKey(0)
@@ -41,60 +41,31 @@ def findCorners(src):
 
 
 
-def cornerHarris(src, thresh):
-    src_gray = cv2.cvtColor(src, cv2.COLOR_BGR2GRAY)
-    count_corners = 0
-    corners = []
-
-    # Detecting corners
-    dst = cv2.cornerHarris(src_gray, 2, 3, 0.04)  # image, blockSize, apertureSize, k
-    # Normalizing
-    dst_norm = np.empty(dst.shape, dtype=np.float32)
-    cv2.normalize(dst, dst_norm, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
-
-    # Drawing a circle around corners
-    for i in range(dst_norm.shape[0]):
-        for j in range(dst_norm.shape[1]):
-            if int(dst_norm[i, j]) > thresh:
-                corners.append([j, i])
-                count_corners += 1
-                if DEBUG:
-                    print("Count:", count_corners, "Center coords: (", j, ",", i, ")")
-                cv2.circle(src, (j, i), 5, 0, 2)
-
-    if DEBUG:
-        cv2.imshow("Corners", src)
-        cv2.waitKey(0)
-    return corners
-
 
 # ------------ FIND A POLYGON IN THE IMAGE: 2 WAYS ------------
-'''
-First method (polygon) searches and detects a rectangular shape after working on the image
-Second method (mask) applies other kinds of approaches such as slic before detecting a rectangle in the form of a mask
-'''
 
 def rectification_polygon(src_img, alpha, beta, threshold):
-
+    """
+    Search for polygons to identify the painting from the frame
+    :param src_img: cutted image to rectify
+    :param alpha: value used to multiply the src_img
+                  to change luminosity and contrast
+    :param beta: value used as bias in the src_img
+                  to change luminosity and contrast
+    :param threshold: threshold to apply on gray image
+    :return: shape of the polygon
+    """
     new_image = np.zeros(src_img.shape, src_img.dtype)
     blank = 255 * np.ones_like(src_img)
 
     new_image[:, :, :] = np.clip(alpha * src_img[:, :, :] + beta, 0, 255)
-    #cv2.imshow('Contrast', new_image)
-    #cv2.waitKey(0)
 
     gray_img = cv2.cvtColor(new_image, cv2.COLOR_BGR2GRAY)
 
-    #flt = cv2.GaussianBlur(gray_img, (5, 5), 0)
-
     _, threshold = cv2.threshold(gray_img, threshold, 255, cv2.THRESH_BINARY_INV)
-    #cv2.imshow('Threshold Image', threshold)
-    #cv2.waitKey(0)
 
     # Find contours on the thresholded image
     contours, _ = cv2.findContours(threshold, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    #x, y, w, h = cv2.boundingRect(contours)
-
 
     for cnt in contours:
         area = cv2.contourArea(cnt)
@@ -112,27 +83,18 @@ def rectification_polygon(src_img, alpha, beta, threshold):
                 # discard the contour if it's equal to the image
                 if abs(cnt_size - src_img.shape[0] * src_img.shape[1]) <= 0.1:
                     continue
-                #cv2.imshow('Contoured Blank Image', blank)
-                #cv2.waitKey(0)
-
                 return blank, True  # break to the first found
-            #if (len(approx) == 8):
-                #cv2.drawContours(blank, [approx], 0, (0, 0, 255), 1)
-                #cv2.imshow('Contoured Blank Image', blank)
-                #cv2.waitKey(0)
-                #return blank, True  # break to the first found
 
     return blank, False
 
 
 def rectification_mask(roi_img):
-    dst = roi_img
-    # kernel = np.ones((5, 5)) / (25)
-    # roi_img = cv2.filter2D(roi_img, -1, kernel)
-
-    # roi_img = cv2.bilateralFilter(res2, 9, 75, 75)
+    """
+    Segment the image and perform morphological operators to identify the painting from the frame
+    :param roi_img: cutted image to rectify.
+    :return: mask which delimits the painting found.
+    """
     Z = roi_img.reshape((-1, 3))
-    # convert to np.float32
     Z = np.float32(Z)
 
     # define criteria, number of clusters(K) and apply kmeans()
@@ -140,7 +102,7 @@ def rectification_mask(roi_img):
     K = 10
     ret, label, center = cv2.kmeans(Z, K, None, criteria, 5, cv2.KMEANS_PP_CENTERS)
 
-    # Now convert back into uint8, and make original image
+    # Convert back into uint8, and make original image
     center = np.uint8(center)
     res = center[label.flatten()]
     res2 = res.reshape((roi_img.shape))
@@ -152,7 +114,7 @@ def rectification_mask(roi_img):
     lab = cv2.merge((l2, a, b))  # merge channels
     
     image_slic = seg.slic(lab, n_segments=4, sigma=1, compactness=5, start_label=1)
-    image = img_as_ubyte(color.label2rgb(image_slic, img, kind='avg', bg_label=0))
+    image = img_as_ubyte(color.label2rgb(image_slic, roi_img, kind='avg', bg_label=0))
 
     mask = np.zeros(image.shape, dtype=np.uint8)
 
@@ -164,9 +126,6 @@ def rectification_mask(roi_img):
     edges = cv2.Canny(thresh, 100, 200)
     # Perform morpholgical operations
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (10, 10))
-    # erosion = cv2.erode(edges, kernel, iterations=1)
-
-    # opening = cv2.morphologyEx(edges, cv2.MORPH_OPEN, kernel, iterations=1)
     close = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel, iterations=1)
 
     # Find distorted rectangle contour and draw onto a mask
@@ -187,11 +146,13 @@ def rectification_mask(roi_img):
 
 
 # ------------ CUT ROI IMAGE ------------
-'''
-Cut the original image to the shape of the ROI
-'''
 
 def cut2ROI(file_name):
+    """
+    Cut the original image to the shape of the ROI
+    :param file_name: name of the image to rectify
+    :return: cutted image
+    """
     img = cv2.imread("data/images/" + file_name)
     img_h, img_w, c = img.shape
 
@@ -214,75 +175,72 @@ def cut2ROI(file_name):
     return roi
 
 
-# ------------ Order and transform points ------------
-'''
-Get, order and transform 4 boundary points
-'''
-
+# ------------ ORDER AND TRANSFORM POINTS ------------
 
 def order_points(pts):
-    # initialzie a list of coordinates that will be ordered
-    # such that the first entry in the list is the top-left,
-    # the second entry is the top-right, the third is the
-    # bottom-right, and the fourth is the bottom-left
+    """
+    Given an unordered set of points, order them from the upper-left to the bottom-right
+    :param pts: points to order
+    :return: array of ordinated points
+    """
+
     rect = np.zeros((4, 2), dtype="float32")
-    # the top-left point will have the smallest sum, whereas
-    # the bottom-right point will have the largest sum
+
     s = pts.sum(axis=1)
     rect[0] = pts[np.argmin(s)]
     rect[2] = pts[np.argmax(s)]
-    # now, compute the difference between the points, the
-    # top-right point will have the smallest difference,
-    # whereas the bottom-left will have the largest difference
+
     diff = np.diff(pts, axis=1)
     rect[1] = pts[np.argmin(diff)]
     rect[3] = pts[np.argmax(diff)]
-    # return the ordered coordinates
+
     return rect
 
 
 def four_point_transform(image, pts):
-    # obtain a consistent order of the points and unpack them
-    # individually
+    """
+    Given an image and 4 points (corners), compute the perspective transform
+    and rectify the region delimited by the corners
+    :param image: image to rectify
+    :param pts: corners that delimit the region to rectify
+    :return: rectified image
+    """
     rect = order_points(pts)
     (tl, tr, br, bl) = rect
-    # compute the width of the new image, which will be the
-    # maximum distance between bottom-right and bottom-left
-    # x-coordiates or the top-right and top-left x-coordinates
+
     widthA = np.sqrt(((br[0] - bl[0]) ** 2) + ((br[1] - bl[1]) ** 2))
     widthB = np.sqrt(((tr[0] - tl[0]) ** 2) + ((tr[1] - tl[1]) ** 2))
     maxWidth = max(int(widthA), int(widthB))
-    # compute the height of the new image, which will be the
-    # maximum distance between the top-right and bottom-right
-    # y-coordinates or the top-left and bottom-left y-coordinates
+
     heightA = np.sqrt(((tr[0] - br[0]) ** 2) + ((tr[1] - br[1]) ** 2))
     heightB = np.sqrt(((tl[0] - bl[0]) ** 2) + ((tl[1] - bl[1]) ** 2))
     maxHeight = max(int(heightA), int(heightB))
-    # now that we have the dimensions of the new image, construct
-    # the set of destination points to obtain a "birds eye view",
-    # (i.e. top-down view) of the image, again specifying points
-    # in the top-left, top-right, bottom-right, and bottom-left
-    # order
+
     dst = np.array([
         [0, 0],
         [maxWidth - 1, 0],
         [maxWidth - 1, maxHeight - 1],
         [0, maxHeight - 1]], dtype="float32")
+
     # compute the perspective transform matrix and then apply it
     M = cv2.getPerspectiveTransform(rect, dst)
     warped = cv2.warpPerspective(image, M, (maxWidth, maxHeight))
-    # return the warped image
+
     return warped
 
 
 def rectification(roi_img):
+    """
+    Perform the rectification
+    :param roi_img: cutted image to rectify
+    :return: image rectified if 4 corners are found,
+             None otherwise.
+    """
     found = False
     i = 0
     params = [[10.0, -500, 60], [1.0, 0, 60], [10.0, -300, 100], [2.0, 0, 120], [7.0, -500, 90],
               [7.0, -500, 200], [1.0, 0, 150], [1.0, 0, 160], [1.0, 0, 120], [7.0, -800, 140]]
-
     while not found and i != 10:
-        #print(i, 'did not work')
         mask, found = rectification_polygon(roi_img, params[i][0], params[i][1], params[i][2])
         i+=1
 
