@@ -13,8 +13,8 @@ DEBUG = False
 
 def findCorners(src):
     """
-    Find corners in a given mask
-    :param src: input mask
+    Find four corners in a given image
+    :param src: input image
     :return: corners found
     """
     out_corners = []
@@ -46,14 +46,14 @@ def findCorners(src):
 
 def rectification_polygon(src_img, alpha, beta, threshold):
     """
-    Search for polygons to identify the painting from the frame
-    :param src_img: cutted image to rectify
+    Search for polygons to separate the painting from its frame
+    :param src_img: ROI image.
     :param alpha: value used to multiply the src_img
-                  to change luminosity and contrast
+                  to change luminosity and contrast.
     :param beta: value used as bias in the src_img
-                  to change luminosity and contrast
-    :param threshold: threshold to apply on gray image
-    :return: shape of the polygon
+                  to change luminosity and contrast.
+    :param threshold: threshold to apply on the grayscale image.
+    :return: blank image with the shape of the polygon.
     """
     new_image = np.zeros(src_img.shape, src_img.dtype)
     blank = 255 * np.ones_like(src_img)
@@ -90,7 +90,7 @@ def rectification_polygon(src_img, alpha, beta, threshold):
 
 def rectification_mask(roi_img):
     """
-    Segment the image and perform morphological operators to identify the painting from the frame
+    Segment the image and perform morphological operators to separate the painting from its frame
     :param roi_img: cutted image to rectify.
     :return: mask which delimits the painting found.
     """
@@ -179,9 +179,9 @@ def cut2ROI(file_name):
 
 def order_points(pts):
     """
-    Given an unordered set of points, order them from the upper-left to the bottom-right
-    :param pts: points to order
-    :return: array of ordinated points
+    Given an unordered set of points, order them from upper-left to bottom-right
+    :param pts: source points.
+    :return: array of ordered points.
     """
 
     rect = np.zeros((4, 2), dtype="float32")
@@ -200,10 +200,10 @@ def order_points(pts):
 def four_point_transform(image, pts):
     """
     Given an image and 4 points (corners), compute the perspective transform
-    and rectify the region delimited by the corners
-    :param image: image to rectify
-    :param pts: corners that delimit the region to rectify
-    :return: rectified image
+    and rectify the region delimited by the corners.
+    :param image: image to rectify.
+    :param pts: corners that delimit the region to rectify.
+    :return: rectified image.
     """
     rect = order_points(pts)
     (tl, tr, br, bl) = rect
