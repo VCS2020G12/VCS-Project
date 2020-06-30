@@ -107,7 +107,9 @@ $ git clone https://github.com/Werther158/VCS-Project
 ```
 2. Copy `libdark.so` (or `libdarknet.so`) from darknet directory to `VCS-Project/detection` directory and name it `libdarknet.so`
 
-3. Run the application
+3. Put the weight linked above in your `/home/username` directory
+
+4. Run the application
 ```
 $ python3 gui.py
 ```
