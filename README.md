@@ -1,6 +1,7 @@
-# VCS-Project
+# Vision and Cognitive Systems Project
+## Berselli Werther, Casarotti Luca, Valentini Laura
 
-Vision and Cognitive Systems Project
+
 
 [Video demo](https://drive.google.com/file/d/1qs-peosM_GF03QwlCEE_H6P9YLmIKaoN/view)
 
