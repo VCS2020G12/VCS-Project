@@ -2,6 +2,10 @@
 
 Vision and Cognitive Systems Project
 
+[Video demo](https://drive.google.com/file/d/1qs-peosM_GF03QwlCEE_H6P9YLmIKaoN/view)
+
+[Paintings and people detection weights](https://drive.google.com/file/d/1sbhh2JMP20V8aeaabpkZ2PJkTaRgwKPs/view)
+
 Tested on:
 ```sh
 Ubuntu 18.04 LTS, Ubuntu 20.04 LTS
