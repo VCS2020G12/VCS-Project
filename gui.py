@@ -43,7 +43,10 @@ Label(frame_options, fg="#696969", bg='#ffffff', font=5, text='Optional features
 
 
 def var_states():
-    video_processing.process_video(e.get(), jump.get(), max_fps.get(), bool(output_video.get()))
+    if "." in e.get():
+        video_processing.process_video(e.get(), jump.get(), max_fps.get(), bool(output_video.get()))
+    else:
+        print("You have to select a valid file!")
 
 
 Label(frame_options, fg="#696969", bg='#ffffff', text='How many frames to jump during processing?', anchor='w').place(relx=0.02, rely=0.16, relwidth=0.96, relheight=0.1)
