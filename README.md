@@ -3,7 +3,7 @@
 Application for the detection, rectification, and retrieval of paintings information given an input video filmed inside a museum. The work presented was accelerated using tools such as CUDA and the OpenCV library.
 
 
-[Video demo](https://drive.google.com/file/d/1qs-peosM_GF03QwlCEE_H6P9YLmIKaoN/view)
+[Video demo](https://www.youtube.com/watch?v=L_jMl--5-Dc)
 
 [Paintings and people detection weights](https://drive.google.com/file/d/1sbhh2JMP20V8aeaabpkZ2PJkTaRgwKPs/view)
 
