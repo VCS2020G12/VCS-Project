@@ -5,7 +5,7 @@ Application for the detection, rectification, and retrieval of paintings informa
 
 [Video demo](https://www.youtube.com/watch?v=L_jMl--5-Dc)
 
-[Paintings and people detection weights](https://drive.google.com/file/d/1sbhh2JMP20V8aeaabpkZ2PJkTaRgwKPs/view)
+#### Warning: confidential data not publicly available on this github repo is required to run the application.
 
 Tested on:
 ```sh
