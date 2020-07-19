@@ -1,5 +1,5 @@
 # Vision and Cognitive Systems Project
-## Berselli Werther, Casarotti Luca, Valentini Laura
+## Laura Valentini, Luca Casarotti, Werther Berselli
 Application for the detection, rectification, and retrieval of paintings information given an input video filmed inside a museum. The work presented was accelerated using tools such as CUDA and the OpenCV library.
 
 
